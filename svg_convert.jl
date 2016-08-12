@@ -169,7 +169,7 @@ function path_to_rings(svg_str, bez_res)
                 if com == "L" || com == "l" || j != 0
                     # Draw line
                     if segments == []
-                        segments = [current_point x y]
+                        segments = reshape([current_point x y], (1,4))
                     else
                         segments = vcat(segments, [current_point x y])
                     end
@@ -193,7 +193,7 @@ function path_to_rings(svg_str, bez_res)
                 end
 
                 if segments == []
-                    segments = [current_point x y]
+                    segments = reshape([current_point x y], (1,4))
                 else
                     segments = vcat(segments, [current_point x y])
                 end
@@ -216,7 +216,7 @@ function path_to_rings(svg_str, bez_res)
                 end
 
                 if segments == []
-                    segments = [current_point x y]
+                    segments = reshape([current_point x y], (1,4))
                 else
                     segments = vcat(segments, [current_point x y])
                 end
@@ -253,7 +253,7 @@ function path_to_rings(svg_str, bez_res)
                 end
 
                 if csplines == []
-                    csplines = [x0, y0, xc1, yc1, xc2, yc2, x1, y1]
+                    csplines = reshape([x0, y0, xc1, yc1, xc2, yc2, x1, y1], (8,1))
                 else
                     csplines = hcat(csplines, [x0, y0, xc1, yc1, xc2, yc2, x1, y1])
                 end
@@ -288,7 +288,7 @@ function path_to_rings(svg_str, bez_res)
                 end
 
                 if csplines == []
-                    csplines = [x0, y0, xc1, yc1, xc2, yc2, x1, y1]
+                    csplines = reshape([x0, y0, xc1, yc1, xc2, yc2, x1, y1], (8,1))
                 else
                     csplines = hcat(csplines, [x0, y0, xc1, yc1, xc2, yc2, x1, y1])
                 end
@@ -321,7 +321,7 @@ function path_to_rings(svg_str, bez_res)
                 end
 
                 if qsplines == []
-                    qsplines = [x0, y0, xc1, yc1, x1, y1]
+                    qsplines = reshape([x0, y0, xc1, yc1, x1, y1], (6,1))
                 else
                     qsplines = hcat(qsplines, [x0, y0, xc1, yc1, x1, y1])
                 end
@@ -352,7 +352,7 @@ function path_to_rings(svg_str, bez_res)
                 end
 
                 if qsplines == []
-                    qsplines = [x0, y0, xc1, yc1, x1, y1]
+                    qsplines = reshape([x0, y0, xc1, yc1, x1, y1], (6,1))
                 else
                     qsplines = hcat(qsplines, [x0, y0, xc1, yc1, x1, y1])
                 end
@@ -401,7 +401,11 @@ function path_to_rings(svg_str, bez_res)
             # Terminate ring, append to ring list.
             appended = true
             if norm(current_point - beginning_of_ring) > tol
-                segments = vcat(segments, [current_point beginning_of_ring])
+                if segments == []
+                    segments = reshape([current_point beginning_of_ring], (1,4))
+                else
+                    segments = vcat(segments, [current_point beginning_of_ring])
+                end
             end
 
             # Frankly, I just don't understand this part.
@@ -420,7 +424,11 @@ function path_to_rings(svg_str, bez_res)
     # Close ring if z is never called for some reason
     if !appended
         if norm(current_point - beginning_of_ring) > tol
-            segments = vcat(segments, [current_point beginning_of_ring])
+            if segments == []
+                segments = reshape([current_point beginning_of_ring], (1,4))
+            else
+                segments = vcat(segments, [current_point beginning_of_ring])
+            end
         end
     end
 
