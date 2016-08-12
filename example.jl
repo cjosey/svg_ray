@@ -11,6 +11,10 @@ total = 10000
 # With 4 threads, the below values will use around 6.5 GB of RAM.
 x_res = 1600 * 16/9
 y_res = 1600
+# If you do not want to tweak the source and geometry, adjust the scaling
+# value below.  Lower values use less RAM, but the resulting image is lower
+# resolution
+res_scaling = 1.0
 # Ellipses aren't treated exactly.  The below number tells the code how 
 # many linesegments to discretize an ellipse into. 20 usually works, but
 # check the geometry file.
@@ -84,7 +88,7 @@ test = @parallel (+) for i = 1:np
     geo = load_geometry(filename, geo_filename, materials, res, matr)
 
     # Perform particle transport
-    t = transport(geo, pgen, frac, x_res, y_res)
+    t = transport(geo, pgen, frac, x_res, y_res, res_scaling)
 
     # Save the data to hdf5
     h5open(result_file * string(i) * ".h5", "w") do file

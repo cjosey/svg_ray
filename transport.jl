@@ -7,8 +7,8 @@ include("tally.jl")
 """
 Performs photon transport on geo using the photon generator provided.
 """
-function transport(geo, photon_gen, n, maxdimx, maxdimy)
-    t = Tally(maxdimx, maxdimy)
+function transport(geo, photon_gen, n, maxdimx, maxdimy, res_scaling)
+    t = Tally(maxdimx, maxdimy, res_scaling)
     maxdim = sqrt(maxdimx^2 + maxdimy^2)*2
     for i = 1:n
         p = pgen()
