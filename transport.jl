@@ -25,9 +25,20 @@ function transport(geo, photon_gen, n, maxdimx, maxdimy, res_scaling)
 
             # Append luminance information
             if last_cell > 0
-                scale = geo.cell_array[last_cell].material.scale
+                # Check if scale is an array or a point
+                s1 = geo.cell_array[last_cell].material.scale
+                if isa(s1, Array)
+                    # Calculate wl index
+                    nw = 80
+                    n_low = 380
+                    n_high = 780
+                    wl_ind = floor(Int, (p.wl - n_low) / (n_high - n_low) * (nw-1)) + 1
+                    scale = s1[wl_ind]
+                else
+                    scale = s1
+                end
             else
-                scale = 0.25
+                scale = 1.0
             end
             push!(scaling, scale)
 

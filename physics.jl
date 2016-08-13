@@ -22,7 +22,8 @@ type Material
     b::Array{Number,1}
     c::Array{Number,1}
     
-    scale::Number # Scaling factor for light for artistic reasons
+    scale # Scaling factor for light for artistic reasons.  
+    # Should eiter be a number or an 80 bin array (see spectral_weight.jl)
 end
 
 # =============================================================================

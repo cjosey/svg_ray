@@ -4,7 +4,6 @@ include("tally.jl")
 # This example script will load up all .h5 files in the directory and plot them
 # Here are the values worth adjusting:
 scale = 1.5
-gamma = 2.2 # This is inverse gamma, as the simulation makes raw spectrographic data.
 filename = "example.png" # Adjust file type using the filename
 # The resulting image may need rotating and or flipping
 
@@ -42,4 +41,4 @@ end
 t = tally_to_rgb(t)
 
 # Save as filename
-save_tally_rgb(t, filename, scale, gamma)
+save_tally_rgb(t, filename, scale)

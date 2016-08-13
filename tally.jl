@@ -271,7 +271,7 @@ end
 Exports an image using scipy.  Supports at least png, pdf.
 Image may require transposing.
 """
-function save_tally_rgb(t, filename, scale, gamma)
+function save_tally_rgb(t, filename, scale)
 
     @pyimport scipy.misc as sm
 
@@ -282,7 +282,15 @@ function save_tally_rgb(t, filename, scale, gamma)
     data[data .< 0] = 0
     data[data .> 1] = 1
 
-    data .^= (1/gamma)
+    # https://en.wikipedia.org/wiki/SRGB
+    for wl = 1:t.nw, y = 1:t.y, x = 1:t.x
+        p = data[x, y, wl]
+        if p <= 0.0031308
+            data[x, y, wl] = 12.92 * p
+        else
+            data[x, y, wl] = (1+0.055) * p^(1/2.4) - 0.055
+        end
+    end
 
     sm.imsave(filename, data)
 end
