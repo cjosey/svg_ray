@@ -27,9 +27,16 @@ It is worth mentioning that due to the size of the tallies, the example simulati
 
 Limitations
 -----------
-Although Bézier curves are treated exactly with this simulation, elliptic curves are not.  They are discretized into linear segments.  This is a fairly coarse (but adjustable) approximation, so it is recommended to avoid elliptic paths in the SVG file.  Hopefully, this limitation can be removed.
+There are quite a number of SVG features not yet supported.  Below is an incomplete list:
+ * Clipping paths
+ * Shapes
+ * Gradients
+ * Exact representations of elliptical paths (approximated by line segments for now)
+ 
+It is hoped that with time some of these can be remedied, but they are not particularly high priority.  Additionally, the SVG reader has only been tested with a narrow range of SVG files.  There are likely many bugs in the SVG reader, so please report if a file does not work and it is not due to the above.
 
-In the simulation, photons are treated as particles. They do not interfere with each other or themselves, and so certain quantum effects cannot be demonstrated.
+Another limitation is that color does not affect the transport operator.  Experiments were done to allow attenuation by color.  They looked terrible.  For now, the geometry is mathematically equivalent to a 2D clear glass model in which an infinitesmal quantity of light is reflected towards z.  This light then shines through a user defined filter (which can be a function of wavelength).
 
-The SVG reader has not been extensively tested.  If you have a file that cannot be read, bring it up as an issue.  Shapes, however, probably will not be added.  If possible, convert them to paths.
+Polarization is not tracked.   While the Fresnel equations are used in the simulation (and thus reflective probability could be a function of s- and p-polarization), I was not clear how polarization should be tracked, especially as the trajectory changes.
 
+Finally, in the simulation, photons are treated as particles. They do not interfere with each other or themselves, and so certain quantum effects cannot be demonstrated.  Converting the program to support wave interference would require a completely different solver model, and as such will probably never be added.
