@@ -19,6 +19,16 @@ res_scaling = 1.0
 # many linesegments to discretize an ellipse into. 20 usually works, but
 # check the geometry file.
 res = 20
+# The program has the ability to read the colors of some files, namely, 
+# if they're not gradients and are in the "style" command.  These can 
+# be transformed into a spectrographic filter, or a luminant multiplier.
+# The below variable controls which
+color_mode = 1 # Assume all cells are pure white
+# color_mode = 2 # Calculate greyscale information
+# color_mode = 3 # Use color filters
+# Additionally, the void has a scaling value. This is how bright the void is.
+void_scale = 0.5
+# Realism is color_mode = 1, void_scale = 1.0
 # Filename for the ".h5" results
 result_file = "result"
 # Filename of the .svg to render
@@ -30,6 +40,10 @@ filename = "bg4.svg"
 geo_filename = "geometry.pdf"
 # It will also show you exactly how this program mangles the coordinate
 # system, and if there are any spurious elements in the geometry.
+# You will have to uncomment the line:
+# plot_geometry(geo, geo_filename)
+# in the loop below. It's commeented out as it occasionally crashes the program
+# due to weird python-parallel julia interactions.
 
 
 # Calculate the number of threads and particles per thread
@@ -85,10 +99,15 @@ test = @parallel (+) for i = 1:np
     matr = [[2.631 0 0];[0 2.631 0];[0 0 1]]
 
     # Load geometry
-    geo = load_geometry(filename, geo_filename, materials, res, matr)
+    geo = load_geometry(filename, materials, res, color_mode, matr)
+
+    # Optionally, plot geometry.
+    # Python sometimes crashes if you do this in a parallel loop.
+    # Useful for debugging your g
+    # plot_geometry(geo, geo_filename)
 
     # Perform particle transport
-    t = transport(geo, pgen, frac, x_res, y_res, res_scaling)
+    t = transport(geo, pgen, frac, x_res, y_res, res_scaling, void_scale)
 
     # Save the data to hdf5
     h5open(result_file * string(i) * ".h5", "w") do file

@@ -542,10 +542,17 @@ end
 Converts hex string to RGB coordinates
 """
 function hex_to_rgb(str)
-    r = parse(Int, str[2:3],16)
-    g = parse(Int, str[4:5],16)
-    b = parse(Int, str[6:7],16)
-    [r, g, b]
+    try
+        r = parse(Int, str[2:3],16)
+        g = parse(Int, str[4:5],16)
+        b = parse(Int, str[6:7],16)
+        return [r, g, b]
+    catch
+        r = 255
+        g = 255
+        b = 255
+        return [255, 255, 255]
+    end
 end
 """
 Find all paths and subsidiary g in the XML heirarchy
@@ -648,7 +655,7 @@ end
 """
 Helper function to load geometry
 """
-function load_geometry(filename, geo_filename, materials, res, mat = [[1 0 0];[0 1 0];[0 0 1]])
+function load_geometry(filename, materials, res, color_mode, mat = [[1 0 0];[0 1 0];[0 0 1]])
     ls, qs, cs, color_array = svg_to_geo(filename, res)
 
     # Apply transformation matrix
@@ -662,18 +669,25 @@ function load_geometry(filename, geo_filename, materials, res, mat = [[1 0 0];[0
     c_array = []
     c_count = 0
     for i = 1:length(ls)
+        # Deal with colors
+        if color_mode == 1
+            scale = 1
+        elseif color_mode == 2
+            ~, scale = spec_weight(color_array[i])
+        else
+            scale, ~ = spec_weight(color_array[i])
+        end
         if isa(materials, Array)
             mat1 = deepcopy(materials[i])
-            mat1.scale, ~ = spec_weight(color_array[i])
+            mat1.scale = scale
             push!(c_array, Cell(ls[i], qs[i], cs[i], mat1))
         else
             mat1 = deepcopy(materials)
-            mat1.scale, ~ = spec_weight(color_array[i])
+            mat1.scale = scale
             push!(c_array, Cell(ls[i], qs[i], cs[i], mat1))
         end
     end
 
     geo = Geometry(c_array)
-    plot_geometry(geo, geo_filename)
     geo
 end
