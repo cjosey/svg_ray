@@ -1,6 +1,7 @@
 using LightXML
 include("surfaces.jl")
 include("geometry.jl")
+include("spectral_weight.jl")
 
 # =============================================================================
 # Approximation functions
@@ -538,21 +539,32 @@ function transform_matrix(mat_str)
 end
 
 """
+Converts hex string to RGB coordinates
+"""
+function hex_to_rgb(str)
+    r = parse(Int, str[2:3],16)
+    g = parse(Int, str[4:5],16)
+    b = parse(Int, str[6:7],16)
+    [r, g, b]
+end
+"""
 Find all paths and subsidiary g in the XML heirarchy
 """
 function parse_g(root, bez_res)
     ls = []
     qs = []
     cs = []
+    c_array = []
     for c in child_nodes(root)
         if is_elementnode(c)
             e = XMLElement(c)
             if LightXML.name(c) == "g"
                 # Nested g
-                ls_g, qs_g, cs_g = parse_g(e, bez_res)
+                ls_g, qs_g, cs_g, colors_g = parse_g(e, bez_res)
                 [push!(ls, ls_i) for ls_i in ls_g]
                 [push!(qs, qs_i) for qs_i in qs_g]
                 [push!(cs, cs_i) for cs_i in cs_g]
+                [push!(c_array, colors_i) for colors_i in colors_g]
             elseif LightXML.name(c) == "path"
                 # Actual path. Get d
 
@@ -569,6 +581,25 @@ function parse_g(root, bez_res)
                 push!(ls, ls_p)
                 push!(qs, qs_p)
                 push!(cs, cs_p)
+
+                # Check for a fill
+                has_fill = false
+                if has_attribute(e, "style")
+                    style_str = attributes_dict(e)["style"]
+                    style_parts = split(style_str, ";")
+                    for parts in style_parts
+                        if contains(parts, "fill:")
+                            c_str = split(parts, ":")[2]
+                            rgb = hex_to_rgb(c_str)
+                            push!(c_array, rgb)
+                            has_fill = true
+                            break
+                        end
+                    end
+                end
+                if !has_fill
+                    push!(c_array, [255, 255, 255])
+                end
             end
         end
     end
@@ -583,7 +614,7 @@ function parse_g(root, bez_res)
             apply_transform!(cs[i], transform_mat)
         end
     end
-    ls, qs, cs
+    ls, qs, cs, c_array
 end
 
 """
@@ -596,27 +627,29 @@ function svg_to_geo(filename, bez_res)
     ls = []
     qs = []
     cs = []
+    c_array = []
 
     for c in child_nodes(xroot)
         if is_elementnode(c)
             e = XMLElement(c)
             if LightXML.name(c) == "g"
-                ls_g, qs_g, cs_g = parse_g(e, bez_res)
+                ls_g, qs_g, cs_g, colors_g = parse_g(e, bez_res)
                 [push!(ls, ls_i) for ls_i in ls_g]
                 [push!(qs, qs_i) for qs_i in qs_g]
                 [push!(cs, cs_i) for cs_i in cs_g]
+                [push!(c_array, colors_i) for colors_i in colors_g]
             end
         end
     end
 
-    ls, qs, cs
+    ls, qs, cs, c_array
 end
 
 """
 Helper function to load geometry
 """
 function load_geometry(filename, geo_filename, materials, res, mat = [[1 0 0];[0 1 0];[0 0 1]])
-    ls, qs, cs = svg_to_geo(filename, res)
+    ls, qs, cs, color_array = svg_to_geo(filename, res)
 
     # Apply transformation matrix
     for i = 1:length(ls)
@@ -630,9 +663,13 @@ function load_geometry(filename, geo_filename, materials, res, mat = [[1 0 0];[0
     c_count = 0
     for i = 1:length(ls)
         if isa(materials, Array)
-            push!(c_array, Cell(ls[i], qs[i], cs[i], materials[i]))
+            mat1 = deepcopy(materials[i])
+            mat1.scale, ~ = spec_weight(color_array[i])
+            push!(c_array, Cell(ls[i], qs[i], cs[i], mat1))
         else
-            push!(c_array, Cell(ls[i], qs[i], cs[i], materials))
+            mat1 = deepcopy(materials)
+            mat1.scale, ~ = spec_weight(color_array[i])
+            push!(c_array, Cell(ls[i], qs[i], cs[i], mat1))
         end
     end
 
