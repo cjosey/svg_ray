@@ -4,15 +4,15 @@ Calculates a spectrum for weighting a given sRGB coordinate
 function spec_weight(rgb)
     # https://en.wikipedia.org/wiki/SRGB
 
-    # Convert to floating point
-    rgb /= 255
-
     # Prevent NaNs later
     for i = 1:3
         if rgb[i] == 0
             rgb[i] = 1
         end
     end
+
+    # Convert to floating point
+    rgb /= 255
 
     # First, we need to convert from sRGB to linear RGB
 
