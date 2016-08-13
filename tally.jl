@@ -157,6 +157,10 @@ function tally_line_hq(t, p1, p2, wl_ind, scale)
 
         dt *= scale
 
+        if isnan(dt)
+            dt = 0
+        end
+
         # Tally
         t.data[x_ind, y_ind, wl_ind] += dt
 
@@ -277,10 +281,16 @@ function save_tally_rgb(t, filename, scale)
 
     data = t.data
 
+    println(minimum(data))
+    println(maximum(data))
+
     data /= maximum(data) / scale
 
     data[data .< 0] = 0
     data[data .> 1] = 1
+
+    println(minimum(data))
+    println(maximum(data))
 
     # https://en.wikipedia.org/wiki/SRGB
     for wl = 1:t.nw, y = 1:t.y, x = 1:t.x
@@ -290,7 +300,12 @@ function save_tally_rgb(t, filename, scale)
         else
             data[x, y, wl] = (1+0.055) * p^(1/2.4) - 0.055
         end
+        if isnan(data[x, y, wl])
+            data[x,y,wl] = 0.0
+        end
     end
+    println(minimum(data))
+    println(maximum(data))
 
     sm.imsave(filename, data)
 end

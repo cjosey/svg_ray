@@ -7,6 +7,13 @@ function spec_weight(rgb)
     # Convert to floating point
     rgb /= 255
 
+    # Prevent NaNs later
+    for i = 1:3
+        if rgb[i] == 0
+            rgb[i] = 1
+        end
+    end
+
     # First, we need to convert from sRGB to linear RGB
 
     for i = 1:length(rgb)
@@ -59,6 +66,6 @@ function spec_weight(rgb)
     # Normalize (in some way) to Y
     data /= (sum(data)) / 80
     data = data * xyz[2]
-    
+
     data, xyz[2]
 end
