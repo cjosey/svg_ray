@@ -102,9 +102,8 @@ function ellipse_approximate_spline(cx, cy, rx, ry, phi, t1, t2, res)
         end
 
         # Rotate by dth
-        x01 = cos(dth)*x0 - sin(dth)*y0
-        y0 = sin(dth)*x0 + cos(dth)*y0
-        x0 = x01
+        x0 = x1
+        y0 = y1
 
         xc11 = cos(dth)*xc1 - sin(dth)*yc1
         yc1 = sin(dth)*xc1 + cos(dth)*yc1
@@ -621,6 +620,39 @@ function hex_to_rgb(str)
 end
 
 """
+Loads an ellipse, converts it into Bezier path
+"""
+function parse_ellipse(e, res)
+    cx = float(attributes_dict(e)["cx"])
+    cy = float(attributes_dict(e)["cy"])
+    rx = float(attributes_dict(e)["rx"])
+    ry = float(attributes_dict(e)["ry"])
+
+    # Get spline approximation to ellipse
+    csplines = ellipse_approximate_spline(cx, cy, rx, ry, 0, 0, 2*pi, res)
+
+    # Generate empty line and quadratic objects
+    segments = reshape(zeros(0), (0,0))
+    qsplines = reshape(zeros(0), (0,0))
+
+    ls = LineArray(segments)
+    qs = QBezier(qsplines)
+    cs = CBezier(csplines)
+
+    # Get transform matrix
+    if has_attribute(e, "transform")
+        # Apply transform
+        transform_str = attributes_dict(e)["transform"]
+        transform_mat = transform_matrix(transform_str)
+        apply_transform!(ls, transform_mat)
+        apply_transform!(qs, transform_mat)
+        apply_transform!(cs, transform_mat)
+    end
+
+    ls, qs, cs
+end
+
+"""
 Find all paths and subsidiary g in the XML heirarchy
 """
 function parse_g(root, bez_res)
@@ -631,6 +663,8 @@ function parse_g(root, bez_res)
     for c in child_nodes(root)
         if is_elementnode(c)
             e = XMLElement(c)
+            needs_fill = false
+
             if LightXML.name(c) == "g"
                 # Nested g
                 ls_g, qs_g, cs_g, colors_g = parse_g(e, bez_res)
@@ -654,7 +688,18 @@ function parse_g(root, bez_res)
                 push!(ls, ls_p)
                 push!(qs, qs_p)
                 push!(cs, cs_p)
+                
+                needs_fill = true
+            elseif LightXML.name(c) == "ellipse"
+                ls_e, qs_e, cs_e = parse_ellipse(e, bez_res)
+                push!(ls, ls_e)
+                push!(qs, qs_e)
+                push!(cs, cs_e)
 
+                needs_fill = true
+            end
+
+            if needs_fill
                 # Check for a fill
                 has_fill = false
                 if has_attribute(e, "style")
@@ -669,7 +714,12 @@ function parse_g(root, bez_res)
                             break
                         end
                     end
+                elseif has_attribute(e, "fill")
+                    fill_str = attributes_dict(e)["fill"]
+                    rgb = hex_to_rgb(fill_str)
+                    has_fill
                 end
+
                 if !has_fill
                     push!(c_array, [255, 255, 255])
                 end
