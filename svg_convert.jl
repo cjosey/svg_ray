@@ -653,6 +653,38 @@ function parse_ellipse(e, res)
 end
 
 """
+Loads a sphere, converts it into Bezier path
+"""
+function parse_circle(e, res)
+    cx = float(attributes_dict(e)["cx"])
+    cy = float(attributes_dict(e)["cy"])
+    r = float(attributes_dict(e)["r"])
+
+    # Get spline approximation to ellipse (with rx = ry)
+    csplines = ellipse_approximate_spline(cx, cy, r, r, 0, 0, 2*pi, res)
+
+    # Generate empty line and quadratic objects
+    segments = reshape(zeros(0), (0,0))
+    qsplines = reshape(zeros(0), (0,0))
+
+    ls = LineArray(segments)
+    qs = QBezier(qsplines)
+    cs = CBezier(csplines)
+
+    # Get transform matrix
+    if has_attribute(e, "transform")
+        # Apply transform
+        transform_str = attributes_dict(e)["transform"]
+        transform_mat = transform_matrix(transform_str)
+        apply_transform!(ls, transform_mat)
+        apply_transform!(qs, transform_mat)
+        apply_transform!(cs, transform_mat)
+    end
+
+    ls, qs, cs
+end
+
+"""
 Find all paths and subsidiary g in the XML heirarchy
 """
 function parse_g(root, bez_res)
@@ -692,6 +724,13 @@ function parse_g(root, bez_res)
                 needs_fill = true
             elseif LightXML.name(c) == "ellipse"
                 ls_e, qs_e, cs_e = parse_ellipse(e, bez_res)
+                push!(ls, ls_e)
+                push!(qs, qs_e)
+                push!(cs, cs_e)
+
+                needs_fill = true
+            elseif LightXML.name(c) == "circle"
+                ls_e, qs_e, cs_e = parse_circle(e, bez_res)
                 push!(ls, ls_e)
                 push!(qs, qs_e)
                 push!(cs, cs_e)
