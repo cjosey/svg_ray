@@ -10,9 +10,11 @@ total = 10000
 x_res = 1600 * 16/9
 y_res = 1600
 # Ellipses aren't treated exactly.  The below number tells the code how 
-# many linesegments to discretize an ellipse into. 20 usually works, but
-# check the geometry file.
-res = 20
+# many cubic bezier curves to discretize an elliptic curve into.  4 usually
+# works, but if explicitly testing spheroids, this should be higher.
+# This is only done due to the complexity of the SVG definition of an
+# ellipse.
+res = 8
 # The program has the ability to read the colors of some files, namely, 
 # if they're not gradients and are in the "style" command.  These can 
 # be transformed into a spectrographic filter, or a luminant multiplier.

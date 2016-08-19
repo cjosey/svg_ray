@@ -64,18 +64,83 @@ function ellipse_approximate(x1, y1, rx, ry, phi_deg, fa, fs, x2, y2, res)
         dth += 2*pi
     end
 
-    # Traverse path
-    t = linspace(th1, th1 + dth, res + 1)
+    # Approximate with splines
+    ellipse_approximate_spline((x1 + x2)/2, (y1 + y2)/2, rx, ry, phi, th1, th1+dth, res)
+end
 
-    # Calculate xp, yp
-    xp = rx * cos(t)
-    yp = ry * sin(t)
+function ellipse_approximate_spline(cx, cy, rx, ry, phi, t1, t2, res)
+    # This uses quite a bit of theory from this excellent article
+    # https://pomax.github.io/bezierinfo/#circles_cubic
+    # Truthfully, I'd rather not do this, but it makes things so much easier,
+    # since the code is highly tuned for Beziers.
 
-    # Transform it back to real coordinates (step 3)
-    x = cos(phi) * xp - sin(phi) * yp + (x1 + x2)/2
-    y = sin(phi) * xp + cos(phi) * yp + (y1 + y2)/2
+    # First, we form the approximation from theta = 0 to theta = (t2 - t1)
+    # for a circle
+    csplines = []
 
-    hcat(x[1:end-1], y[1:end-1], x[2:end], y[2:end])
+    # Calculate original spline
+    dth = (t2 - t1) / res
+    x0 = 1
+    y0 = 0
+
+    f = 4/3 * tan(dth/4)
+
+    xc1 = 1
+    yc1 = f
+
+    xc2 = cos(dth) + f * sin(dth)
+    yc2 = sin(dth) - f * cos(dth)
+
+    x1 = cos(dth)
+    y1 = sin(dth)
+
+    for i = 1:res
+        if csplines == []
+            csplines = reshape([x0, y0, xc1, yc1, xc2, yc2, x1, y1], (8,1))
+        else
+            csplines = hcat(csplines, [x0, y0, xc1, yc1, xc2, yc2, x1, y1])
+        end
+
+        # Rotate by dth
+        x01 = cos(dth)*x0 - sin(dth)*y0
+        y0 = sin(dth)*x0 + cos(dth)*y0
+        x0 = x01
+
+        xc11 = cos(dth)*xc1 - sin(dth)*yc1
+        yc1 = sin(dth)*xc1 + cos(dth)*yc1
+        xc1 = xc11
+
+        xc21 = cos(dth)*xc2 - sin(dth)*yc2
+        yc2 = sin(dth)*xc2 + cos(dth)*yc2
+        xc2 = xc21
+
+        x11 = cos(dth)*x1 - sin(dth)*y1
+        y1 = sin(dth)*x1 + cos(dth)*y1
+        x1 = x11
+    end
+
+    # Now, convert into a surface for more transforms
+    cb = CBezier(csplines)
+
+    # mat1, rotate from t1 = 0 to t1 = t1
+    mat1 = [[cos(t1) -sin(t1) 0];[sin(t1) cos(t1) 0];[0 0 1]]
+
+    # mat2, stretch to match rx
+    mat2 = [[rx 0 0];[0 1 0];[0 0 1]]
+
+    # mat3, stretch to match ry
+    mat3 = [[1 0 0];[0 ry 0];[0 0 1]]
+
+    # mat4, shift to [cx, cy]
+    mat4 = [[1 0 cx];[0 1 cy];[0 0 1]]
+
+    # mat5, rotate last time to final phi
+    mat5 = [[cos(phi) -sin(phi) 0];[sin(phi) cos(phi) 0];[0 0 1]]
+
+    mat = mat5*mat4*mat3*mat2*mat1
+
+    apply_transform!(cb, mat)
+    cb.points
 end
 
 # =============================================================================
@@ -389,10 +454,10 @@ function path_to_rings(svg_str, bez_res)
                 # Ellipses are hard, so we approximate them.
                 points_ellipse = ellipse_approximate(x0, y0, rx, ry, x_rot, large_arc, sweep, x1, y1, bez_res)
 
-                if segments == []
-                    segments = points_ellipse
+                if csplines == []
+                    csplines = points_ellipse
                 else
-                    segments = vcat(segments, points_ellipse)
+                    csplines = hcat(csplines, points_ellipse)
                 end
 
                 current_point = [x1 y1]
@@ -554,6 +619,7 @@ function hex_to_rgb(str)
         return [255, 255, 255]
     end
 end
+
 """
 Find all paths and subsidiary g in the XML heirarchy
 """
