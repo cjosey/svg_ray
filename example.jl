@@ -7,14 +7,8 @@ using HDF5
 # Total number of particles to run
 total = 10000
 # Resolution of the output file
-# Test with small values first.  In parallel, this takes a ton of RAM
-# With 4 threads, the below values will use around 6.5 GB of RAM.
 x_res = 1600 * 16/9
 y_res = 1600
-# If you do not want to tweak the source and geometry, adjust the scaling
-# value below.  Lower values use less RAM, but the resulting image is lower
-# resolution
-res_scaling = 1.0
 # Ellipses aren't treated exactly.  The below number tells the code how 
 # many linesegments to discretize an ellipse into. 20 usually works, but
 # check the geometry file.
@@ -85,12 +79,6 @@ test = @parallel (+) for i = 1:np
     # mat = [m2, m5, m3, m6, m3, m1, m6]
     # for example for a geometry with 7 paths.
 
-    # You may also want to adjust the brightness.  By default, the void has a 
-    # brightness of 0.25, and the above materials have a brightness of 1. 
-    # For "exact" results, if you have the LAB coordinate of a color, 
-    # the scale value should be sqrt(L / 100).
-    materials.scale = 0.7
-
     # Our geometry is too small for the resolution of interest.  It is only
     # 608.08 pixels tall.  We can apply a transformation matrix during load.
     # This one scales everything so that the picture is 1600 pixels tall.
@@ -107,17 +95,14 @@ test = @parallel (+) for i = 1:np
     # plot_geometry(geo, geo_filename)
 
     # Perform particle transport
-    t = transport(geo, pgen, frac, x_res, y_res, res_scaling, void_scale)
+    t = transport(geo, pgen, frac, x_res, y_res, void_scale)
 
     # Save the data to hdf5
     h5open(result_file * string(i) * ".h5", "w") do file
         write(file, "data", t.data)
         write(file, "x", t.x)
         write(file, "y", t.y)
-        write(file, "nw", t.nw)
         write(file, "scaling_factor", t.scaling_factor)
-        write(file, "n_low", t.n_low)
-        write(file, "n_high", t.n_high)
     end
     1
 end

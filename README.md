@@ -21,9 +21,7 @@ This program has a fairly long list of dependencies:
 
 Usage
 -----
-An example simulation is presented in ``example.jl``, which can be run via ``julia example.jl`` or ``julia -p <number of threads> example.jl``.  It will generate a number of result files (one per thread) as well as a plot of how the code sees the geometry.  The results can be merged and converted to an image using ``julia plot.jl``.  The file itself has extensive comments on how it all works.
-
-It is worth mentioning that due to the size of the tallies, the example simulation will take 1.6 GB of RAM per thread.  This can be reduced by adjusting the value of ``res_scaling`` in line 17 of ``example.jl``.
+An example simulation is presented in ``example.jl``, which can be run via ``julia example.jl`` or ``julia -p <number of threads> example.jl`` for a parallel simulation.  It will generate a number of result files (one per thread) as well as a plot of how the code sees the geometry.  The results can be merged and converted to an image using ``julia plot.jl``.  The file itself has extensive comments on how it all works.
 
 Limitations
 -----------

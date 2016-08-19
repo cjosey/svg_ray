@@ -671,7 +671,7 @@ function load_geometry(filename, materials, res, color_mode, mat = [[1 0 0];[0 1
     for i = 1:length(ls)
         # Deal with colors
         if color_mode == 1
-            scale = 1
+            scale = 1.0
         elseif color_mode == 2
             ~, scale = spec_weight(color_array[i])
         else

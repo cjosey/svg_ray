@@ -43,11 +43,11 @@ Download the source code from github.
 
 Open a terminal, and change directory to where the source was downloaded.
 
-Run 
+Run:
 ```
 julia example.jl
 ```
-Or if you have a large amount of RAM:
+Or to run a parallel simulation:
 ```
 julia -p <number of CPU cores> example.jl
 ```

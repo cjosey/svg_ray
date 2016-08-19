@@ -23,12 +23,9 @@ for fn in readdir()
                 data = read(file, "data")
                 x = read(file, "x")
                 y = read(file, "y")
-                nw = read(file, "nw")
                 scaling_factor = read(file, "scaling_factor")
-                n_low = read(file, "n_low")
-                n_high = read(file, "n_high")
             end
-            t = Tally(data, x, y, nw, scaling_factor, n_low, n_high)
+            t = Tally(data, x, y, scaling_factor)
         else
             h5open(fn, "r") do file
                 t.data += read(file, "data")
