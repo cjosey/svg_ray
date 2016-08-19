@@ -620,6 +620,130 @@ function hex_to_rgb(str)
 end
 
 """
+Loads a rectangle, converts to linear path
+"""
+function parse_rect(e, res)
+    x = float(attributes_dict(e)["x"])
+    y = float(attributes_dict(e)["y"])
+    width = float(attributes_dict(e)["width"])
+    height = float(attributes_dict(e)["height"])
+
+    curved_corners = false
+
+    if has_attribute(e, "rx")
+        # Oh boy
+        rx = float(attributes_dict(e)["rx"])
+        curved_corners = true
+    else
+        rx = 0
+    end
+
+    if has_attribute(e, "ry")
+        ry = float(attributes_dict(e)["ry"])
+        curved_corners = true
+    else
+        ry = 0
+    end
+
+    # Fix rx, ry components
+    if rx != 0 && ry == 0
+        ry = rx
+    end
+
+    if ry != 0 && rx == 0
+        rx = ry
+    end
+
+    if rx > width / 2
+        rx = width / 2
+    end
+
+    if ry > height / 2
+        ry = height / 2
+    end
+
+    csplines = []
+    segments = []
+
+    # Process if curved
+    if curved_corners
+        # Process counter clockwise from curve at origin
+        # C1
+        cx = x + rx
+        cy = y + ry
+        th1 = pi
+        th2 = 3/2 * pi
+        csplines = ellipse_approximate_spline(cx, cy, rx, ry, 0, th1, th2, res)
+
+        # C2
+        cx = x + width - rx
+        cy = y + ry
+        th1 = 3/2 * pi
+        th2 = 2 * pi
+        csplines = hcat(csplines, ellipse_approximate_spline(cx, cy, rx, ry, 0, th1, th2, res))
+
+        # C3
+        cx = x + width - rx
+        cy = y + height - ry
+        th1 = 0
+        th2 = pi/2
+        csplines = hcat(csplines, ellipse_approximate_spline(cx, cy, rx, ry, 0, th1, th2, res))
+
+        # C4
+        cx = x + rx
+        cy = y + height - ry
+        th1 = pi/2
+        th2 = pi
+        csplines = hcat(csplines, ellipse_approximate_spline(cx, cy, rx, ry, 0, th1, th2, res))
+    else
+        csplines = reshape(zeros(0), (0,0))
+    end
+    # Get lines
+    # L1
+    x0 = x + rx
+    x1 = x + width - rx
+    yl = y
+    segments = reshape([x0 yl x1 yl], (1,4))
+
+    # L2
+    y0 = y + ry
+    y1 = y + height - ry
+    xl = x + width
+    segments = vcat(segments, [xl y0 xl y1])
+
+    # L3
+    x0 = x + width - rx
+    x1 = x + rx
+    yl = y + height
+    segments = vcat(segments, [x0 yl x1 yl])
+
+    # L4
+    y0 = y + height - ry
+    y1 = y + ry
+    xl = x
+    segments = vcat(segments, [xl y0 xl y1])
+
+    # Generate quadratic objects
+    qsplines = reshape(zeros(0), (0,0))
+
+    ls = LineArray(segments)
+    qs = QBezier(qsplines)
+    cs = CBezier(csplines)
+
+    # Get transform matrix
+    if has_attribute(e, "transform")
+        # Apply transform
+        transform_str = attributes_dict(e)["transform"]
+        transform_mat = transform_matrix(transform_str)
+        apply_transform!(ls, transform_mat)
+        apply_transform!(qs, transform_mat)
+        apply_transform!(cs, transform_mat)
+    end
+
+    ls, qs, cs
+end
+
+"""
 Loads an ellipse, converts it into Bezier path
 """
 function parse_ellipse(e, res)
@@ -731,6 +855,13 @@ function parse_g(root, bez_res)
                 needs_fill = true
             elseif LightXML.name(c) == "circle"
                 ls_e, qs_e, cs_e = parse_circle(e, bez_res)
+                push!(ls, ls_e)
+                push!(qs, qs_e)
+                push!(cs, cs_e)
+
+                needs_fill = true
+            elseif LightXML.name(c) == "rect"
+                ls_e, qs_e, cs_e = parse_rect(e, bez_res)
                 push!(ls, ls_e)
                 push!(qs, qs_e)
                 push!(cs, cs_e)
