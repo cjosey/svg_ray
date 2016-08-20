@@ -69,7 +69,7 @@ function ellipse_approximate(x1, y1, rx, ry, phi_deg, fa, fs, x2, y2, res)
     ellipse_approximate_spline((x1 + x2)/2, (y1 + y2)/2, rx, ry, phi, th1, th1+dth, res)
 end
 
-function ellipse_approximate_spline(cx, cy, rx, ry, phi, t1, t2, res)
+function ellipse_approximate_spline(cx, cy, rx, ry, phi, t1, t2, res_orig)
     # This uses quite a bit of theory from this excellent article
     # https://pomax.github.io/bezierinfo/#circles_cubic
     # Truthfully, I'd rather not do this, but it makes things so much easier,
@@ -79,6 +79,8 @@ function ellipse_approximate_spline(cx, cy, rx, ry, phi, t1, t2, res)
     # for a circle
     csplines = []
 
+    # Calculate stepwise resolution
+    res = ceil(Int, (t2 - t1) / (2*pi) * res_orig) 
     # Calculate original spline
     dth = (t2 - t1) / res
     x0 = 1

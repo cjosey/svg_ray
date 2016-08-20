@@ -10,10 +10,10 @@ total = 10000
 x_res = 1600 * 16/9
 y_res = 1600
 # Ellipses aren't treated exactly.  The below number tells the code how 
-# many cubic bezier curves to discretize an elliptic curve into.  4 usually
-# works, but if explicitly testing spheroids, this should be higher.
-# This is only done due to the complexity of the SVG definition of an
-# ellipse.
+# many cubic bezier curves to discretize a full ellipse into.  Incomplete
+# curves will use fewer bezier curves for performance reasons.
+# 8 is a good compromise, but if the simulation requires exact spherical
+# geometry, increasing this to 16 should be well enough.
 res = 8
 # The program has the ability to read the colors of some files, namely, 
 # if they're not gradients and are in the "style" command.  These can 
