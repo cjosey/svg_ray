@@ -1,6 +1,7 @@
 using LightXML
 include("surfaces.jl")
 include("geometry.jl")
+include("surfaces.jl")
 include("spectral_weight.jl")
 
 # =============================================================================
@@ -603,6 +604,34 @@ function transform_matrix(mat_str)
 end
 
 """
+Given an XML path, loads x from either XML or from "style"
+"""
+function get_term(e, term)
+    has_term = false
+    # Check style attribute
+    if has_attribute(e, "style")
+        style_str = attributes_dict(e)["style"]
+        style_parts = split(style_str, ";")
+        for parts in style_parts
+            part = split(parts, ":")
+            if strip(part[1]) == term
+                result = strip(part[2])
+                has_term = true
+                break
+            end
+        end
+    elseif has_attribute(e, term)
+        result = strip(attributes_dict(e)[term])
+        has_term = true
+    end
+
+    if !has_term
+        result = "none"
+    end
+    result
+end
+
+"""
 Converts hex string to RGB coordinates
 """
 function hex_to_rgb(str)
@@ -620,37 +649,16 @@ function hex_to_rgb(str)
 end
 
 """
-Loads a rectangle, converts to linear path
+Creates a rectangle path
 """
-function parse_rect(e, res)
-    x = float(attributes_dict(e)["x"])
-    y = float(attributes_dict(e)["y"])
-    width = float(attributes_dict(e)["width"])
-    height = float(attributes_dict(e)["height"])
-
-    curved_corners = false
-
-    if has_attribute(e, "rx")
-        # Oh boy
-        rx = float(attributes_dict(e)["rx"])
-        curved_corners = true
-    else
-        rx = 0
-    end
-
-    if has_attribute(e, "ry")
-        ry = float(attributes_dict(e)["ry"])
-        curved_corners = true
-    else
-        ry = 0
-    end
-
+function form_rect(x, y, width, height, rx, ry, res)
+    
     # Fix rx, ry components
-    if rx != 0 && ry == 0
+    if rx > 0 && ry == 0
         ry = rx
     end
 
-    if ry != 0 && rx == 0
+    if ry > 0 && rx == 0
         rx = ry
     end
 
@@ -660,6 +668,20 @@ function parse_rect(e, res)
 
     if ry > height / 2
         ry = height / 2
+    end
+
+    if rx < 0
+        rx = 0
+    end
+
+    if ry < 0
+        ry = 0
+    end
+
+    if rx != 0 || ry != 0
+        curved_corners = true
+    else
+        curved_corners = false
     end
 
     csplines = []
@@ -730,21 +752,131 @@ function parse_rect(e, res)
     qs = QBezier(qsplines)
     cs = CBezier(csplines)
 
+    ls, qs, cs
+end
+
+"""
+Loads a rectangle, converts to cells
+"""
+function parse_rect(e, res)
+    x = float(attributes_dict(e)["x"])
+    y = float(attributes_dict(e)["y"])
+    width = float(attributes_dict(e)["width"])
+    height = float(attributes_dict(e)["height"])
+
+    curved_corners = false
+
+    if has_attribute(e, "rx")
+        # Oh boy
+        rx = float(attributes_dict(e)["rx"])
+        curved_corners = true
+    else
+        rx = 0
+    end
+
+    if has_attribute(e, "ry")
+        ry = float(attributes_dict(e)["ry"])
+        curved_corners = true
+    else
+        ry = 0
+    end
+
+    ls = []
+    qs = []
+    cs = []
+    colors = []
+
+    # Check if path has stroke width
+    sw = get_term(e, "stroke-width")
+    fill = get_term(e, "fill")
+    stroke = get_term(e, "stroke")
+    if sw != "none"
+        sw = float(sw)
+        # Oh boy
+        if rx == 0 && ry == 0
+            rx_low = 0
+            ry_low = 0
+            rx_high = 0
+            ry_high = 0
+        elseif rx == 0
+            rx_low = ry - sw/2
+            ry_low = ry - sw/2
+            rx_high = ry + sw/2
+            ry_high = ry + sw/2
+        elseif ry == 0
+            rx_low = rx - sw/2
+            ry_low = rx - sw/2
+            rx_high = rx + sw/2
+            ry_high = rx + sw/2
+        else
+            rx_low = rx - sw/2
+            ry_low = ry - sw/2
+            rx_high = rx + sw/2
+            ry_high = ry + sw/2
+        end
+
+        # Ensure reality
+        if width - sw < 0 || height - sw < 0
+            fill = "none"
+            ls2 = LineArray(reshape(zeros(0), (0,0)))
+            qs2 = QBezier(reshape(zeros(0), (0,0)))
+            cs2 = CBezier(reshape(zeros(0), (0,0)))
+        else
+            # Inner path
+            ls2, qs2, cs2 = form_rect(x + sw/2, y + sw/2, width - sw, height - sw, rx_low, ry_low, res)
+        end
+
+        # Outer path
+        ls1, qs1, cs1 = form_rect(x - sw/2, y - sw/2, width + sw, height + sw, rx_high, ry_high, res)
+
+        # Check if fill is none
+        if fill == "none"
+            # Merge inner, outer paths
+            ls_merged = LineArray( vcat(ls1.points, ls2.points))
+            qs_merged = QBezier( hcat(qs1.points, qs2.points))
+            cs_merged = CBezier( hcat(cs1.points, cs2.points))
+
+            # Add inner path
+            push!(ls, ls_merged)
+            push!(qs, qs_merged)
+            push!(cs, cs_merged)
+            push!(colors, hex_to_rgb(stroke))
+        else
+            # Layer fill on top of path around
+            push!(ls, ls1)
+            push!(qs, qs1)
+            push!(cs, cs1)
+            push!(colors, hex_to_rgb(stroke))
+
+            push!(ls, ls2)
+            push!(qs, qs2)
+            push!(cs, cs2)
+            push!(colors, hex_to_rgb(fill))
+        end
+    else
+        fill = get_term(e, "fill")
+        ls1, qs1, cs1 = form_rect(x, y, width, height, rx, ry, res)
+        push!(ls, ls1)
+        push!(qs, qs1)
+        push!(cs, cs1)
+        push!(colors, hex_to_rgb(fill))
+    end
+
     # Get transform matrix
     if has_attribute(e, "transform")
         # Apply transform
         transform_str = attributes_dict(e)["transform"]
         transform_mat = transform_matrix(transform_str)
-        apply_transform!(ls, transform_mat)
-        apply_transform!(qs, transform_mat)
-        apply_transform!(cs, transform_mat)
+        [apply_transform!(ls_p, transform_mat) for ls_p in ls]
+        [apply_transform!(qs_p, transform_mat) for qs_p in qs]
+        [apply_transform!(cs_p, transform_mat) for cs_p in cs]
     end
 
-    ls, qs, cs
+    ls, qs, cs, colors
 end
 
 """
-Loads an ellipse, converts it into Bezier path
+Loads an ellipse, converts to cells
 """
 function parse_ellipse(e, res)
     cx = float(attributes_dict(e)["cx"])
@@ -752,60 +884,168 @@ function parse_ellipse(e, res)
     rx = float(attributes_dict(e)["rx"])
     ry = float(attributes_dict(e)["ry"])
 
-    # Get spline approximation to ellipse
-    csplines = ellipse_approximate_spline(cx, cy, rx, ry, 0, 0, 2*pi, res)
+    sw = get_term(e, "stroke-width")
+    fill = get_term(e, "fill")
+    stroke = get_term(e, "stroke")
 
-    # Generate empty line and quadratic objects
-    segments = reshape(zeros(0), (0,0))
-    qsplines = reshape(zeros(0), (0,0))
+    ls = []
+    qs = []
+    cs = []
+    colors = []
 
-    ls = LineArray(segments)
-    qs = QBezier(qsplines)
-    cs = CBezier(csplines)
+    # Check if path has stroke width
+    sw = get_term(e, "stroke-width")
+    if sw != "none"
+        sw = float(sw)
+
+        # Outer path
+        csplines = ellipse_approximate_spline(cx, cy, rx + sw/2, ry + sw/2, 0, 0, 2*pi, res)
+        cs1 = CBezier(csplines)
+        qs1 = QBezier(reshape(zeros(0), (0,0)))
+        ls1 = LineArray(reshape(zeros(0), (0,0)))
+
+        # Ensure reality
+        if rx - sw/2 < 0 || ry - sw/2 < 0
+            fill = "none"
+            ls2 = LineArray(reshape(zeros(0), (0,0)))
+            qs2 = QBezier(reshape(zeros(0), (0,0)))
+            cs2 = CBezier(reshape(zeros(0), (0,0)))
+        else
+            csplines2 = ellipse_approximate_spline(cx, cy, rx - sw/2, ry - sw/2, 0, 0, 2*pi, res)
+            cs2 = CBezier(csplines2)
+            qs2 = QBezier(reshape(zeros(0), (0,0)))
+            ls2 = LineArray(reshape(zeros(0), (0,0)))
+        end
+
+        # Check if fill is none
+        if fill == "none"
+            # Merge inner, outer paths
+            ls_merged = LineArray( vcat(ls1.points, ls2.points))
+            qs_merged = QBezier( hcat(qs1.points, qs2.points))
+            cs_merged = CBezier( hcat(cs1.points, cs2.points))
+
+            # Add inner path
+            push!(ls, ls_merged)
+            push!(qs, qs_merged)
+            push!(cs, cs_merged)
+            push!(colors, hex_to_rgb(stroke))
+        else
+            # Layer fill on top of path around
+            push!(ls, ls1)
+            push!(qs, qs1)
+            push!(cs, cs1)
+            push!(colors, hex_to_rgb(stroke))
+
+            push!(ls, ls2)
+            push!(qs, qs2)
+            push!(cs, cs2)
+            push!(colors, hex_to_rgb(fill))
+        end
+    else
+        ls1, qs1, cs1 = ellipse_approximate_spline(cx, cy, rx, ry, 0, 0, 2*pi, res)
+        push!(ls, ls1)
+        push!(qs, qs1)
+        push!(cs, cs1)
+        push!(colors, hex_to_rgb(fill))
+    end
 
     # Get transform matrix
     if has_attribute(e, "transform")
         # Apply transform
         transform_str = attributes_dict(e)["transform"]
         transform_mat = transform_matrix(transform_str)
-        apply_transform!(ls, transform_mat)
-        apply_transform!(qs, transform_mat)
-        apply_transform!(cs, transform_mat)
+        [apply_transform!(ls_p, transform_mat) for ls_p in ls]
+        [apply_transform!(qs_p, transform_mat) for qs_p in qs]
+        [apply_transform!(cs_p, transform_mat) for cs_p in cs]
     end
 
-    ls, qs, cs
+    ls, qs, cs, colors
 end
 
 """
-Loads a sphere, converts it into Bezier path
+Loads a circle, converts to cells
 """
 function parse_circle(e, res)
     cx = float(attributes_dict(e)["cx"])
     cy = float(attributes_dict(e)["cy"])
     r = float(attributes_dict(e)["r"])
 
-    # Get spline approximation to ellipse (with rx = ry)
-    csplines = ellipse_approximate_spline(cx, cy, r, r, 0, 0, 2*pi, res)
+    sw = get_term(e, "stroke-width")
+    fill = get_term(e, "fill")
+    stroke = get_term(e, "stroke")
 
-    # Generate empty line and quadratic objects
-    segments = reshape(zeros(0), (0,0))
-    qsplines = reshape(zeros(0), (0,0))
+    ls = []
+    qs = []
+    cs = []
+    colors = []
 
-    ls = LineArray(segments)
-    qs = QBezier(qsplines)
-    cs = CBezier(csplines)
+    # Check if path has stroke width
+    sw = get_term(e, "stroke-width")
+    if sw != "none"
+        sw = float(sw)
+
+        # Outer path
+        csplines = ellipse_approximate_spline(cx, cy, r + sw/2, r + sw/2, 0, 0, 2*pi, res)
+        cs1 = CBezier(csplines)
+        qs1 = QBezier(reshape(zeros(0), (0,0)))
+        ls1 = LineArray(reshape(zeros(0), (0,0)))
+
+        # Ensure reality
+        if r - sw/2 < 0
+            fill = "none"
+            ls2 = LineArray(reshape(zeros(0), (0,0)))
+            qs2 = QBezier(reshape(zeros(0), (0,0)))
+            cs2 = CBezier(reshape(zeros(0), (0,0)))
+        else
+            csplines2 = ellipse_approximate_spline(cx, cy, r - sw/2, r - sw/2, 0, 0, 2*pi, res)
+            cs2 = CBezier(csplines2)
+            qs2 = QBezier(reshape(zeros(0), (0,0)))
+            ls2 = LineArray(reshape(zeros(0), (0,0)))
+        end
+
+        # Check if fill is none
+        if fill == "none"
+            # Merge inner, outer paths
+            ls_merged = LineArray( vcat(ls1.points, ls2.points))
+            qs_merged = QBezier( hcat(qs1.points, qs2.points))
+            cs_merged = CBezier( hcat(cs1.points, cs2.points))
+
+            # Add inner path
+            push!(ls, ls_merged)
+            push!(qs, qs_merged)
+            push!(cs, cs_merged)
+            push!(colors, hex_to_rgb(stroke))
+        else
+            # Layer fill on top of path around
+            push!(ls, ls1)
+            push!(qs, qs1)
+            push!(cs, cs1)
+            push!(colors, hex_to_rgb(stroke))
+
+            push!(ls, ls2)
+            push!(qs, qs2)
+            push!(cs, cs2)
+            push!(colors, hex_to_rgb(fill))
+        end
+    else
+        ls1, qs1, cs1 = ellipse_approximate_spline(cx, cy, r, r, 0, 0, 2*pi, res)
+        push!(ls, ls1)
+        push!(qs, qs1)
+        push!(cs, cs1)
+        push!(colors, hex_to_rgb(fill))
+    end
 
     # Get transform matrix
     if has_attribute(e, "transform")
         # Apply transform
         transform_str = attributes_dict(e)["transform"]
         transform_mat = transform_matrix(transform_str)
-        apply_transform!(ls, transform_mat)
-        apply_transform!(qs, transform_mat)
-        apply_transform!(cs, transform_mat)
+        [apply_transform!(ls_p, transform_mat) for ls_p in ls]
+        [apply_transform!(qs_p, transform_mat) for qs_p in qs]
+        [apply_transform!(cs_p, transform_mat) for cs_p in cs]
     end
 
-    ls, qs, cs
+    ls, qs, cs, colors
 end
 
 """
@@ -847,26 +1087,23 @@ function parse_g(root, bez_res)
                 
                 needs_fill = true
             elseif LightXML.name(c) == "ellipse"
-                ls_e, qs_e, cs_e = parse_ellipse(e, bez_res)
-                push!(ls, ls_e)
-                push!(qs, qs_e)
-                push!(cs, cs_e)
-
-                needs_fill = true
+                ls_e, qs_e, cs_e, colors_e = parse_ellipse(e, bez_res)
+                [push!(ls, ls_i) for ls_i in ls_e]
+                [push!(qs, qs_i) for qs_i in qs_e]
+                [push!(cs, cs_i) for cs_i in cs_e]
+                [push!(c_array, colors_i) for colors_i in colors_e]
             elseif LightXML.name(c) == "circle"
-                ls_e, qs_e, cs_e = parse_circle(e, bez_res)
-                push!(ls, ls_e)
-                push!(qs, qs_e)
-                push!(cs, cs_e)
-
-                needs_fill = true
+                ls_e, qs_e, cs_e, colors_e = parse_circle(e, bez_res)
+                [push!(ls, ls_i) for ls_i in ls_e]
+                [push!(qs, qs_i) for qs_i in qs_e]
+                [push!(cs, cs_i) for cs_i in cs_e]
+                [push!(c_array, colors_i) for colors_i in colors_e]
             elseif LightXML.name(c) == "rect"
-                ls_e, qs_e, cs_e = parse_rect(e, bez_res)
-                push!(ls, ls_e)
-                push!(qs, qs_e)
-                push!(cs, cs_e)
-
-                needs_fill = true
+                ls_e, qs_e, cs_e, colors_e = parse_rect(e, bez_res)
+                [push!(ls, ls_i) for ls_i in ls_e]
+                [push!(qs, qs_i) for qs_i in qs_e]
+                [push!(cs, cs_i) for cs_i in cs_e]
+                [push!(c_array, colors_i) for colors_i in colors_e]
             end
 
             if needs_fill
