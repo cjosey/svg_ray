@@ -1073,7 +1073,6 @@ function parse_g(root, bez_res)
     for c in child_nodes(root)
         if is_elementnode(c)
             e = XMLElement(c)
-            needs_fill = false
 
             if LightXML.name(c) == "g"
                 # Nested g
@@ -1095,11 +1094,14 @@ function parse_g(root, bez_res)
                     apply_transform!(qs_p, transform_mat)
                     apply_transform!(cs_p, transform_mat)
                 end
-                push!(ls, ls_p)
-                push!(qs, qs_p)
-                push!(cs, cs_p)
-                
-                needs_fill = true
+                fill_str = get_term(e, "fill")
+                if fill_str != "none"
+                    push!(ls, ls_p)
+                    push!(qs, qs_p)
+                    push!(cs, cs_p)
+                    rgb = hex_to_rgb(fill_str)
+                    push!(c_array, rgb)
+                end
             elseif LightXML.name(c) == "ellipse"
                 ls_e, qs_e, cs_e, colors_e = parse_ellipse(e, bez_res)
                 [push!(ls, ls_i) for ls_i in ls_e]
@@ -1118,32 +1120,6 @@ function parse_g(root, bez_res)
                 [push!(qs, qs_i) for qs_i in qs_e]
                 [push!(cs, cs_i) for cs_i in cs_e]
                 [push!(c_array, colors_i) for colors_i in colors_e]
-            end
-
-            if needs_fill
-                # Check for a fill
-                has_fill = false
-                if has_attribute(e, "style")
-                    style_str = attributes_dict(e)["style"]
-                    style_parts = split(style_str, ";")
-                    for parts in style_parts
-                        if contains(parts, "fill:")
-                            c_str = split(parts, ":")[2]
-                            rgb = hex_to_rgb(c_str)
-                            push!(c_array, rgb)
-                            has_fill = true
-                            break
-                        end
-                    end
-                elseif has_attribute(e, "fill")
-                    fill_str = attributes_dict(e)["fill"]
-                    rgb = hex_to_rgb(fill_str)
-                    has_fill
-                end
-
-                if !has_fill
-                    push!(c_array, [255, 255, 255])
-                end
             end
         end
     end
