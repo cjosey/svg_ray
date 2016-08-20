@@ -87,7 +87,7 @@ test = @parallel (+) for i = 1:np
     geo = load_geometry(filename, materials, res, color_mode, matr)
 
     # Useful for debugging your geometry
-    if myid() == 2
+    if myid() == 1 || myid() == 2
         plot_geometry(geo, x_res, y_res, geo_filename)
     end
 

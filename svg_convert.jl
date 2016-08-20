@@ -529,6 +529,10 @@ function transform_matrix(mat_str)
     t1 = split(mat_str, "(")
     mat_type = t1[1]
     mat_data = split(split(t1[2], ")")[1], ",")
+    if length(mat_data) == 1
+        # Try again
+        mat_data = split(split(t1[2], ")")[1], " ")
+    end
     mat_data = [float(s) for s in mat_data]
     if mat_type == "matrix"
         a = mat_data[1]
@@ -944,7 +948,11 @@ function parse_ellipse(e, res)
             push!(colors, hex_to_rgb(fill))
         end
     else
-        ls1, qs1, cs1 = ellipse_approximate_spline(cx, cy, rx, ry, 0, 0, 2*pi, res)
+        csplines = ellipse_approximate_spline(cx, cy, rx, ry, 0, 0, 2*pi, res)
+        cs1 = CBezier(csplines)
+        qs1 = QBezier(reshape(zeros(0), (0,0)))
+        ls1 = LineArray(reshape(zeros(0), (0,0)))
+
         push!(ls, ls1)
         push!(qs, qs1)
         push!(cs, cs1)
@@ -1030,7 +1038,11 @@ function parse_circle(e, res)
             push!(colors, hex_to_rgb(fill))
         end
     else
-        ls1, qs1, cs1 = ellipse_approximate_spline(cx, cy, r, r, 0, 0, 2*pi, res)
+        csplines = ellipse_approximate_spline(cx, cy, r, r, 0, 0, 2*pi, res)
+        cs1 = CBezier(csplines)
+        qs1 = QBezier(reshape(zeros(0), (0,0)))
+        ls1 = LineArray(reshape(zeros(0), (0,0)))
+
         push!(ls, ls1)
         push!(qs, qs1)
         push!(cs, cs1)
