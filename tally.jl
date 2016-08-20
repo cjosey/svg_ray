@@ -258,7 +258,6 @@ end
 
 """
 Exports an image using scipy.  Supports at least png, pdf.
-Image may require transposing.
 """
 function save_tally_rgb(t, filename, scale)
 
@@ -266,31 +265,25 @@ function save_tally_rgb(t, filename, scale)
 
     data = t.data
 
-    println(minimum(data))
-    println(maximum(data))
-
     data /= maximum(data) / scale
 
     data[data .< 0] = 0
     data[data .> 1] = 1
 
-    println(minimum(data))
-    println(maximum(data))
+    data_new = zeros(t.y, t.x, 3)
 
     # https://en.wikipedia.org/wiki/SRGB
     for wl = 1:3, y = 1:t.y, x = 1:t.x
         p = data[x, y, wl]
         if p <= 0.0031308
-            data[x, y, wl] = 12.92 * p
+            data_new[y, x, wl] = 12.92 * p
         else
-            data[x, y, wl] = (1+0.055) * p^(1/2.4) - 0.055
+            data_new[y, x, wl] = (1+0.055) * p^(1/2.4) - 0.055
         end
-        if isnan(data[x, y, wl])
-            data[x,y,wl] = 0.0
+        if isnan(data_new[y, x, wl])
+            data_new[y, x, wl] = 0.0
         end
     end
-    println(minimum(data))
-    println(maximum(data))
 
-    sm.imsave(filename, data)
+    sm.imsave(filename, data_new)
 end

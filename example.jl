@@ -36,11 +36,6 @@ filename = "bg4.svg"
 geo_filename = "geometry.pdf"
 # It will also show you exactly how this program mangles the coordinate
 # system, and if there are any spurious elements in the geometry.
-# You will have to uncomment the line:
-# plot_geometry(geo, geo_filename)
-# in the loop below. It's commeented out as it occasionally crashes the program
-# due to weird python-parallel julia interactions.
-
 
 # Calculate the number of threads and particles per thread
 np = nworkers()
@@ -91,10 +86,10 @@ test = @parallel (+) for i = 1:np
     # Load geometry
     geo = load_geometry(filename, materials, res, color_mode, matr)
 
-    # Optionally, plot geometry.
-    # Python sometimes crashes if you do this in a parallel loop.
-    # Useful for debugging your g
-    # plot_geometry(geo, geo_filename)
+    # Useful for debugging your geometry
+    if myid() == 2
+        plot_geometry(geo, x_res, y_res, geo_filename)
+    end
 
     # Perform particle transport
     t = transport(geo, pgen, frac, x_res, y_res, void_scale)

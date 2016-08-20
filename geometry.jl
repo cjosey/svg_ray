@@ -151,11 +151,15 @@ end
 """
 Plots all cells in the geometry and saves to filename
 """
-function plot_geometry(geo::Geometry, filename)
+function plot_geometry(geo::Geometry, xmax, ymax, filename)
     fig = figure()
     ax = fig[:add_subplot](111)
     for cell in geo.cell_array
         plot_cell(cell, ax)
     end
+    ax[:set_aspect]("equal")
+    xlim((0,xmax))
+    ylim((0,ymax))
+    ax[:invert_yaxis]()
     savefig(filename)
 end
