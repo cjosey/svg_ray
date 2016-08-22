@@ -69,7 +69,7 @@ function plot_cell(cell, ax)
         y1 = cell.lines.points[i,2]
         x2 = cell.lines.points[i,3]
         y2 = cell.lines.points[i,4]
-        ax[:plot]([x1, x2], [y1, y2], "k")
+        ax[:plot]([x1, x2], [y1, y2], "k", linewidth=0.25)
     end
 
     # cubic bezier
@@ -87,7 +87,7 @@ function plot_cell(cell, ax)
         codes = [path.Path[:MOVETO], path.Path[:CURVE4], path.Path[:CURVE4], path.Path[:CURVE4]]
 
         pat = path.Path(verts, codes)
-        pa = patches.PathPatch(pat, facecolor="none")
+        pa = patches.PathPatch(pat, facecolor="none", linewidth=0.25)
 
         ax[:add_patch](pa)
     end
@@ -105,7 +105,7 @@ function plot_cell(cell, ax)
         codes = [path.Path[:MOVETO], path.Path[:CURVE3], path.Path[:CURVE3]]
 
         pat = path.Path(verts, codes)
-        pa = patches.PathPatch(pat, facecolor="none")
+        pa = patches.PathPatch(pat, facecolor="none", linewidth=0.25)
 
         ax[:add_patch](pa)
     end
