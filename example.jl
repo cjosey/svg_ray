@@ -1,11 +1,12 @@
-using HDF5
+push!(LOAD_PATH, ".")
+using SvgRay
 
 # This is an example script to demonstrate the capabilities of this program.
 # It is recommended to run this script in parallel for performance reasons.
 
 # Important configuration
 # Total number of particles to run
-total = 10000
+total = 100000
 # Resolution of the output file
 x_res = 1600 * 16/9
 y_res = 1600
@@ -43,17 +44,9 @@ frac = round(Int, total/np)
 
 # Parallel loop
 test = @parallel (+) for i = 1:np
-    # All direct includes must be inside a parallel loop
-    # using statements can be outside.
 
-    # Load the transport operator
-    include("transport.jl")
-    # Load in the example source distribution
+    # Include photon generator
     include("example_gen.jl")
-    # Load in the svg capabilities
-    include("example_gen.jl")
-    # Load up definition of materials
-    include("physics.jl")
 
     # Here are some example materials
     # Source
@@ -61,12 +54,12 @@ test = @parallel (+) for i = 1:np
     # and 
     # http://refractiveindex.info/?shelf=glass&book=LASF9&page=SCHOTT
     # Note the * 1.0e6.  It converts um^2 to nm^2 required by the simulation.
-    m1 = Material([1.03961212, 0.231792344, 1.01046945], [6.00069867e-3, 2.00179144e-2, 1.03560653e2] * 1.0e6, 1) # BK7 1.521 at 500 nm
-    m2 = Material([1.5851495, 0.143559385, 1.08521269], [0.00926681282, 0.0424489805, 105.613573] * 1.0e6, 1) # BAF10 1.678 at 500 nm
-    m3 = Material([1.43134930, 0.65054713, 5.3414021], [5.2799261e-3, 1.42382647e-2, 3.25017834e2] * 1.0e6, 1) # Sapphire (ordinary wave) 1.774 at 500 nm
-    m4 = Material([1.5039759, 0.55069141, 6.5927379], [5.48041129e-3, 1.47994281e-2, 4.0289514e2] * 1.0e6, 1) # Sapphire (extraordinary wave) 1.766 at 500 nm
-    m5 = Material([0.696166300, 0.407942600, 0.897479400], [4.67914826e-3, 1.35120631e-2, 97.9340025] * 1.0e6, 1) # Fused Silica 1.462 at 500 nm
-    m6 = Material([2.00029547, 0.298926886, 1.80691843], [0.0121426017, 0.0538736236, 156.530829] * 1.0e6, 1) # LASF9 avg 1.8656 at 500 nm
+    m1 = SvgRay.Material([1.03961212, 0.231792344, 1.01046945], [6.00069867e-3, 2.00179144e-2, 1.03560653e2] * 1.0e6, 1) # BK7 1.521 at 500 nm
+    m2 = SvgRay.Material([1.5851495, 0.143559385, 1.08521269], [0.00926681282, 0.0424489805, 105.613573] * 1.0e6, 1) # BAF10 1.678 at 500 nm
+    m3 = SvgRay.Material([1.43134930, 0.65054713, 5.3414021], [5.2799261e-3, 1.42382647e-2, 3.25017834e2] * 1.0e6, 1) # Sapphire (ordinary wave) 1.774 at 500 nm
+    m4 = SvgRay.Material([1.5039759, 0.55069141, 6.5927379], [5.48041129e-3, 1.47994281e-2, 4.0289514e2] * 1.0e6, 1) # Sapphire (extraordinary wave) 1.766 at 500 nm
+    m5 = SvgRay.Material([0.696166300, 0.407942600, 0.897479400], [4.67914826e-3, 1.35120631e-2, 97.9340025] * 1.0e6, 1) # Fused Silica 1.462 at 500 nm
+    m6 = SvgRay.Material([2.00029547, 0.298926886, 1.80691843], [0.0121426017, 0.0538736236, 156.530829] * 1.0e6, 1) # LASF9 avg 1.8656 at 500 nm
 
     # There are two ways you can define materials.  The first is to give all
     # cells the same material.  
@@ -84,22 +77,17 @@ test = @parallel (+) for i = 1:np
     matr = [[2.631 0 0];[0 2.631 0];[0 0 1]]
 
     # Load geometry
-    geo = load_geometry(filename, materials, res, color_mode, matr)
+    geo = SvgRay.load_geometry(filename, materials, res, color_mode, matr)
 
     # Useful for debugging your geometry
     if myid() == 1 || myid() == 2
-        plot_geometry(geo, x_res, y_res, geo_filename)
+        SvgRay.plot_geometry(geo, x_res, y_res, geo_filename)
     end
 
     # Perform particle transport
-    t = transport(geo, pgen, frac, x_res, y_res, void_scale)
+    t = SvgRay.transport(geo, pgen, frac, x_res, y_res, void_scale)
 
     # Save the data to hdf5
-    h5open(result_file * string(i) * ".h5", "w") do file
-        write(file, "data", t.data)
-        write(file, "x", t.x)
-        write(file, "y", t.y)
-        write(file, "scaling_factor", t.scaling_factor)
-    end
+    SvgRay.save_tally_hdf5(t, result_file * string(i) * ".h5")
     1
 end

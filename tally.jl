@@ -1,5 +1,3 @@
-using PyPlot
-using PyCall
 import Base.+
 
 # =============================================================================
@@ -78,7 +76,6 @@ function tally_path(t, path, wl, scale)
               [0.0001 0.0000 0.0000]; [0.0001 0.0000 0.0000]]'
 
     xyz_val = cie_color_match[:, wl_ind]
-    xyz_val = reshape(xyz_val, (1,1,3))
 
 
     for i = 1:size(path)[1] - 1
@@ -190,7 +187,6 @@ function tally_line_hq(t, p1, p2, xyz_val, scale)
 
         if isnan(dt[1]) || isnan(dt[2]) || isnan(dt[3])
             dt = [0, 0, 0]
-            dt = reshape(dt, (1,1,3))
         end
 
         # Tally
@@ -286,4 +282,43 @@ function save_tally_rgb(t, filename, scale)
     end
 
     sm.imsave(filename, data_new)
+end
+
+function save_tally_hdf5(t, filename)
+    h5open(filename, "w") do file
+        write(file, "data", t.data)
+        write(file, "x", t.x)
+        write(file, "y", t.y)
+        write(file, "scaling_factor", t.scaling_factor)
+    end
+end
+
+function load_tally_hdf5(dir)
+    t = []
+
+    for fn in readdir(dir)
+        if contains(fn, ".h5")
+            if t == []
+                data = []
+                x = []
+                y = []
+                nw = []
+                scaling_factor = []
+                n_low = []
+                n_high = []
+                h5open(fn, "r") do file
+                    data = read(file, "data")
+                    x = read(file, "x")
+                    y = read(file, "y")
+                    scaling_factor = read(file, "scaling_factor")
+                end
+                t = SvgRay.Tally(data, x, y, scaling_factor)
+            else
+                h5open(fn, "r") do file
+                    t.data += read(file, "data")
+                end
+            end
+        end
+    end
+    t
 end

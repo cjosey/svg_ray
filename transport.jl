@@ -1,9 +1,3 @@
-include("svg_convert.jl")
-include("cell.jl")
-include("physics.jl")
-include("geometry.jl")
-include("tally.jl")
-
 """
 Performs photon transport on geo using the photon generator provided.
 """
@@ -11,7 +5,7 @@ function transport(geo, photon_gen, n, maxdimx, maxdimy, void_scale)
     t = Tally(maxdimx, maxdimy)
     maxdim = sqrt(maxdimx^2 + maxdimy^2)*2
     for i = 1:n
-        p = pgen()
+        p = photon_gen()
         p.last = locate(geo, p)
         path = p.xy
         # Tally a path for at most 30 reflections

@@ -60,8 +60,8 @@ function apply_transform!(line::LineArray, mat)
     for i = 1:size(line.points)[1]
         # Apply to lines
 
-        v1 = [line.points[i,1:2] 1]'
-        v2 = [line.points[i,3:4] 1]'
+        v1 = [line.points[i,1:2]; 1]
+        v2 = [line.points[i,3:4]; 1]
         v1t = mat*v1
         v2t = mat*v2
         line.points[i,1:2] = v1t[1:2]

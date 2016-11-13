@@ -1,11 +1,4 @@
-
-using PyPlot
-using PyCall
-
 import Base.contains
-
-include("physics.jl")
-include("surfaces.jl")
 
 # =============================================================================
 # Types

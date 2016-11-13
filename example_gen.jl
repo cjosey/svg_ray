@@ -1,3 +1,5 @@
+using SvgRay
+
 # This file contains an example set of particle generation parameters.  Tune
 # to your artistic preference.  It is also worth noting, as this is a linear
 # operation (until gamma correction in the plotting), you can always run the
@@ -86,5 +88,5 @@ function pgen()
     xy = [-1000 600 + 400*rand()]
     uv = sample_valid_angle(xy)
 
-    p = Photon(xy, uv, -1, wl)
+    p = SvgRay.Photon(xy, uv, -1, wl)
 end

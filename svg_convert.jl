@@ -1,9 +1,3 @@
-using LightXML
-include("surfaces.jl")
-include("geometry.jl")
-include("surfaces.jl")
-include("spectral_weight.jl")
-
 # =============================================================================
 # Approximation functions
 # =============================================================================
